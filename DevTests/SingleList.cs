@@ -8,15 +8,17 @@ namespace DevTests
     /// Stores a list of items in the order they are added
     /// </summary>
     /// <typeparam name="T">Value type</typeparam>
-    public class SingleList<T>
+    public class SingleList<T> : ICustomList<T>
     {
         ListItem head;
         ListItem last;
 
+        int size;
+
         public SingleList()
         {
-            head = new ListItem(null, default(T));
-            last = head;
+            head = last = null;
+            size = 0;
         }
 
         /// <summary>
@@ -28,11 +30,13 @@ namespace DevTests
         {
             get
             {
-                throw new NotImplementedException();
+                return FindItemAt(index).Value;
             }
             set
             {
-                throw new NotImplementedException();
+                if (value == null) throw new ArgumentNullException(nameof(value));
+
+                FindItemAt(index).Value = value;
             }
         }
 
@@ -43,7 +47,7 @@ namespace DevTests
         {
             get
             {
-                throw new NotImplementedException();
+                return size;
             }
         }
 
@@ -55,8 +59,24 @@ namespace DevTests
         {
             if (value == null) throw new ArgumentNullException(nameof(value));
 
+            size++;
+
             var item = new ListItem(null, value);
-            last = last.Next = item;
+            
+            if (head == null)
+            {
+                // This is the first node, so make it the head
+                head = item;
+            }
+            else
+            {
+                // This is not the head, make it the next item
+                last.Next = item;
+            }
+
+            // Set the item just added to be the last one
+            last = item;
+            //last = last.Next = item;
         }
 
         /// <summary>
@@ -66,7 +86,28 @@ namespace DevTests
         /// <returns>The index of the item, -1 if not found</returns>
         public int IndexOf(T item)
         {
-            throw new NotImplementedException();
+            if (item == null) throw new ArgumentNullException(nameof(item));
+
+            // Index is -1 if not found
+            int index = -1;
+            // Start from the head of the list
+            var currentIndex = 0;
+            var currentItem = head;
+
+            while (currentItem != null)
+            {
+                if (currentItem.Value.Equals(item))
+                {
+                    // Found the item, exit the loop
+                    index = currentIndex;
+                    break;
+                }
+                // Keep going down the list
+                currentItem = currentItem.Next;
+                currentIndex++;
+            }
+
+            return index;
         }
 
         /// <summary>
@@ -76,7 +117,23 @@ namespace DevTests
         /// <param name="item">The item to insert</param>
         public void Insert(int index, T item)
         {
-            throw new NotImplementedException();
+            if (index < 0 || index > size - 1) throw new IndexOutOfRangeException();
+            if (item == null) throw new ArgumentNullException(nameof(item));
+
+            if (index == 0)
+            {
+                // The list is not empty, set the new head
+                head = new ListItem(head, item);
+            }
+            else
+            {
+                // Find the item before the one we want
+                var currentItem = FindItemAt(index - 1);
+                // Add the new one as next
+                currentItem.Next = new ListItem(currentItem.Next, item);
+            }
+            // Increment size
+            size++;
         }
 
         /// <summary>
@@ -85,7 +142,29 @@ namespace DevTests
         /// <param name="index">The index</param>
         public void RemoveAt(int index)
         {
-            throw new NotImplementedException();
+            if (index < 0 || index > size - 1) throw new IndexOutOfRangeException();
+
+            if (head == last)
+            {
+                // There is only one item, clear both head and last
+                head = last = null;
+            }
+            else if (index == 0)
+            {
+                // The item to be removed is the head, set it to the next item
+                head = head.Next;
+            }
+            else
+            {
+                // Find the item before the one we want
+                var currentItem = FindItemAt(index - 1);
+                // Set the next item to the one after that
+                currentItem.Next = currentItem.Next.Next;
+                // If deleting the last item, also set the last item
+                if (currentItem.Next == null) last = currentItem;
+            }
+            // Decrement size
+            size--;
         }
 
         /// <summary>
@@ -93,7 +172,11 @@ namespace DevTests
         /// </summary>
         public void Clear()
         {
-            throw new NotImplementedException();
+            // Clear the head and the last node
+            head = last = null;
+
+            // Set the list size to zero
+            size = 0;
         }
 
         /// <summary>
@@ -103,7 +186,10 @@ namespace DevTests
         /// <returns>True if the item is in the list</returns>
         public bool Contains(T item)
         {
-            throw new NotImplementedException();
+            if (item == null) throw new ArgumentNullException(nameof(item));
+
+            // Get the index of the item, if positive then the item is in the list
+            return IndexOf(item) >= 0;
         }
 
         /// <summary>
@@ -113,7 +199,17 @@ namespace DevTests
         /// <returns>True if the item was found and removed, False otherwise</returns>
         public bool Remove(T item)
         {
-            throw new NotImplementedException();
+            if (item == null) throw new ArgumentNullException(nameof(item));
+
+            // Get the index of the item
+            int index = IndexOf(item);
+            if (index != -1)
+            {
+                // The item is found, remove it
+                RemoveAt(index);
+                return true;
+            }
+            return false;
         }
 
         /// <summary>
@@ -122,7 +218,14 @@ namespace DevTests
         /// <returns>Enumerator of T</returns>
         public IEnumerator<T> GetEnumerator()
         {
-            throw new NotImplementedException();
+            // Start from the beginning
+            ListItem currentItem = head;
+            while (currentItem != null)
+            {
+                yield return currentItem.Value;
+                // Keep going down the list
+                currentItem = currentItem.Next;
+            }
         }
 
         /// <summary>
@@ -131,7 +234,42 @@ namespace DevTests
         /// <returns>Enumerable of single list items</returns>
         public IEnumerable<T> AsEnumerable()
         {
-            throw new NotImplementedException();
+            // Start from the beginning
+            ListItem currentItem = head;
+            while (currentItem != null)
+            {
+                yield return currentItem.Value;
+                // Keep going down the list
+                currentItem = currentItem.Next;
+            }
+        }
+
+        /// <summary>
+        /// Find a <see cref="ListItem"/> by index
+        /// </summary>
+        /// <param name="index"></param>
+        /// <returns>The <see cref="ListItem"/> located on the specified position</returns>
+        /// <exception cref="IndexOutOfRangeException">when index is out of range.</exception>
+        private ListItem FindItemAt(int index)
+        {
+            if (index < 0 || index > size - 1) throw new IndexOutOfRangeException();
+
+            var currentIndex = 0;
+            var currentItem = head;
+
+            while (currentItem != null)
+            {
+                if (currentIndex == index)
+                {
+                    // Found the item
+                    break;
+                }
+                // Keep going down the list
+                currentIndex++;
+                currentItem = currentItem.Next;
+            }
+
+            return currentItem;
         }
 
         class ListItem
